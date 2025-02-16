@@ -2,7 +2,7 @@
 name = "objective"
 version = "0.1.0"
 edition = "2021"
-author = "Drumstickz64"
-description = "a basic importer for the Wavefront .obj file format"
+authors = ["Drumstickz64"]
+description = "A basic importer for the Wavefront .obj file format"
 
 [dependencies]
