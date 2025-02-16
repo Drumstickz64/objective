@@ -1,0 +1,8 @@
+[package]
+name = "objective"
+version = "0.1.0"
+edition = "2021"
+author = "Drumstickz64"
+description = "a basic importer for the Wavefront .obj file format"
+
+[dependencies]
