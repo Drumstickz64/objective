@@ -6,3 +6,4 @@ authors = ["Drumstickz64"]
 description = "A basic importer for the Wavefront .obj file format"
 
 [dependencies]
+glam = "0.29.2"
