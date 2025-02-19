@@ -4,6 +4,3 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Drumstickz64"]
 description = "A basic importer for the Wavefront .obj file format"
-
-[dependencies]
-glam = "0.29.2"
