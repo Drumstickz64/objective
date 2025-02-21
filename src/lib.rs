@@ -24,6 +24,7 @@ impl Model {
     pub fn parse(content: &str) -> Result<Model, ObjParseError> {
         let mut vertices = Vec::new();
         let mut normals = Vec::new();
+        let mut uvs = Vec::new();
         let mut primitives = Vec::new();
 
         for (line_number, line) in content
@@ -52,6 +53,13 @@ impl Model {
                         panic!("{line} only 3 dimensional vectors are supported for statement 'vn', but it had '{num_components}' components instead");
                     }
                 }
+                "vt" => {
+                    let num_components =
+                        Self::parse_vector(&mut uvs, segments, line_number).unwrap();
+                    if num_components != 2 {
+                        panic!("{line} only 2 dimensional vectors are supported for statement 'vt', but it had '{num_components}' components instead");
+                    }
+                }
                 "f" => {
                     let num_indices = Self::parse_primitive(
                         &mut primitives,
@@ -76,6 +84,7 @@ impl Model {
             meshes: vec![Mesh {
                 vertices,
                 normals,
+                uvs,
                 primitives,
             }],
         })
@@ -131,6 +140,8 @@ pub struct Mesh {
     pub vertices: Vec<f32>,
     /// a flat array of floats representing 3d vectors describing vertex normals
     pub normals: Vec<f32>,
+    /// a flat array of floats representing 2d vectors describing vertex UVs (texture coordinates)
+    pub uvs: Vec<f32>,
     /// a flat array of a length, followed by a series of indices of that length that
     /// make up a primitive (e.g. lines, triangles, quads, polygons, etc...)
     ///

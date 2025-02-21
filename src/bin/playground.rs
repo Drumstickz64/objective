@@ -15,6 +15,10 @@ fn print_mesh(mesh: &Mesh) {
         println!("normal {} => {normal:?}", i + 1);
     }
 
+    for (i, uv) in mesh.uvs.chunks_exact(2).enumerate() {
+        println!("uv {} => {uv:?}", i + 1);
+    }
+
     for (i, prim) in mesh.iter_primitives().enumerate() {
         println!("primitive {} => {:?}", i + 1, prim);
     }
