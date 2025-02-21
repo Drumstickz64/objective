@@ -5,14 +5,6 @@ pub struct Model {
     pub meshes: Vec<Mesh>,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct Mesh {
-    pub vertices: Vec<f32>,
-    /// a flat array of a length, followed by a series of indices of that length
-    /// e.g. 3 1 2 3 1 4 2 5 6
-    pub primitives: Vec<usize>,
-}
-
 #[derive(Debug)]
 pub enum ObjLoadError {
     Io(io::Error),
@@ -71,6 +63,44 @@ impl Model {
     }
 }
 
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Mesh {
+    pub vertices: Vec<f32>,
+    /// a flat array of a length, followed by a series of indices of that length
+    /// e.g. 3 1 2 3 1 4 2 5 6
+    pub primitives: Vec<u16>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrimitiveIter<'a> {
+    primitives: &'a [u16],
+}
+
+impl<'a> Iterator for PrimitiveIter<'a> {
+    type Item = &'a [u16];
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.primitives.is_empty() {
+            return None;
+        }
+
+        let length = self.primitives[0] as usize;
+        let items = &self.primitives[1..1 + length];
+
+        self.primitives = &self.primitives[1 + length..];
+
+        Some(items)
+    }
+}
+
+impl Mesh {
+    pub fn iter_primitives(&self) -> PrimitiveIter {
+        PrimitiveIter {
+            primitives: &self.primitives,
+        }
+    }
+}
+
 fn parse_vec3<'a>(
     data: &mut Vec<f32>,
     mut segments: impl Iterator<Item = &'a str>,
@@ -84,11 +114,11 @@ fn parse_vec3<'a>(
 }
 
 fn parse_primitive<'a>(
-    primitives: &mut Vec<usize>,
+    primitives: &mut Vec<u16>,
     num_vertices: usize,
     segments: impl Iterator<Item = &'a str>,
     _line: usize,
-) -> Result<usize, ObjParseError> {
+) -> Result<u16, ObjParseError> {
     let mut length = 0;
 
     let length_index = primitives.len();
@@ -102,7 +132,7 @@ fn parse_primitive<'a>(
             0 => panic!("indices in a primitive must not be 0"),
             1.. => (index as usize) - 1,
         };
-        primitives.push(index);
+        primitives.push(index as u16);
         length += 1;
     }
 
