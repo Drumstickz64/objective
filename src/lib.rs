@@ -1,3 +1,5 @@
+use std::{fs, io, path::Path};
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Model {
     pub meshes: Vec<Mesh>,
@@ -11,48 +13,62 @@ pub struct Mesh {
     pub primitives: Vec<usize>,
 }
 
+#[derive(Debug)]
+pub enum ObjLoadError {
+    Io(io::Error),
+    Parse(ObjParseError),
+}
+
 #[derive(Debug, Clone, PartialEq, Hash)]
 pub struct ObjParseError;
 
-pub fn parse_obj(content: &str) -> Result<Model, ObjParseError> {
-    let mut vertices = Vec::new();
-    let mut primitives = Vec::new();
+impl Model {
+    pub fn load_from_file(path: impl AsRef<Path>) -> Result<Model, ObjLoadError> {
+        let content = fs::read_to_string(path).unwrap();
 
-    for (line_number, line) in content
-        .lines()
-        .enumerate()
-        .filter(|(_, line)| !line.is_empty() && !line.starts_with('#'))
-    {
-        let mut segments = line.split_ascii_whitespace();
-
-        let stmt_type = segments
-            .next()
-            .expect("expected statement type at start of line, but got nothing");
-
-        match stmt_type {
-            "v" => parse_vec3(&mut vertices, segments, line_number).unwrap(),
-            "f" => {
-                let num_indices =
-                    parse_primitive(&mut primitives, vertices.len() / 3, segments, line_number)
-                        .unwrap();
-                if num_indices < 3 {
-                    panic!("{line}: 'f' command must provide at least 3 indices, but instead provided '{num_indices}");
-                }
-            }
-            stmt_type => eprintln!(
-                "WARNING: unknown statement type '{}', skipping...",
-                stmt_type
-            ),
-        }
+        Ok(Self::parse(&content).unwrap())
     }
 
-    // handle 1 mesh currently
-    Ok(Model {
-        meshes: vec![Mesh {
-            vertices,
-            primitives,
-        }],
-    })
+    pub fn parse(content: &str) -> Result<Model, ObjParseError> {
+        let mut vertices = Vec::new();
+        let mut primitives = Vec::new();
+
+        for (line_number, line) in content
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| !line.is_empty() && !line.starts_with('#'))
+        {
+            let mut segments = line.split_ascii_whitespace();
+
+            let stmt_type = segments
+                .next()
+                .expect("expected statement type at start of line, but got nothing");
+
+            match stmt_type {
+                "v" => parse_vec3(&mut vertices, segments, line_number).unwrap(),
+                "f" => {
+                    let num_indices =
+                        parse_primitive(&mut primitives, vertices.len() / 3, segments, line_number)
+                            .unwrap();
+                    if num_indices < 3 {
+                        panic!("{line}: 'f' command must provide at least 3 indices, but instead provided '{num_indices}");
+                    }
+                }
+                stmt_type => eprintln!(
+                    "WARNING: unknown statement type '{}', skipping...",
+                    stmt_type
+                ),
+            }
+        }
+
+        // handle 1 mesh currently
+        Ok(Model {
+            meshes: vec![Mesh {
+                vertices,
+                primitives,
+            }],
+        })
+    }
 }
 
 fn parse_vec3<'a>(
