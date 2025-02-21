@@ -19,7 +19,7 @@ fn print_mesh(mesh: &Mesh) {
         println!("uv {} => {uv:?}", i + 1);
     }
 
-    for (i, prim) in mesh.iter_primitives().enumerate() {
-        println!("primitive {} => {:?}", i + 1, prim);
+    for (i, prim) in mesh.iter_elements().enumerate() {
+        println!("element {} => {:?}", i + 1, prim);
     }
 }

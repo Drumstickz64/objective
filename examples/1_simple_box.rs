@@ -8,11 +8,11 @@ async fn main() {
     let mesh = &model.meshes[0];
 
     let mut macroquad_indices = Vec::new();
-    for (i, prim) in mesh.iter_primitives().enumerate() {
+    for (i, prim) in mesh.iter_elements().enumerate() {
         assert_eq!(
             prim.len(),
             4,
-            "expected 'box.obj' to only have quad primitives, but primitive '{i}' had {}",
+            "expected 'box.obj' to only have quad elements, but element '{i}' had {}",
             prim.len()
         );
         // triangle 1

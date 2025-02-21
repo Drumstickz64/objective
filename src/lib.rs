@@ -25,7 +25,7 @@ impl Model {
         let mut vertices = Vec::new();
         let mut normals = Vec::new();
         let mut uvs = Vec::new();
-        let mut primitives = Vec::new();
+        let mut elements = Vec::new();
 
         for (line_number, line) in content
             .lines()
@@ -61,8 +61,8 @@ impl Model {
                     }
                 }
                 "f" => {
-                    let num_indices = Self::parse_primitive(
-                        &mut primitives,
+                    let num_indices = Self::parse_element(
+                        &mut elements,
                         vertices.len() / 3,
                         segments,
                         line_number,
@@ -85,7 +85,7 @@ impl Model {
                 vertices,
                 normals,
                 uvs,
-                primitives,
+                elements,
             }],
         })
     }
@@ -105,30 +105,30 @@ impl Model {
         Ok(count)
     }
 
-    fn parse_primitive<'a>(
-        primitives: &mut Vec<u16>,
+    fn parse_element<'a>(
+        elements: &mut Vec<u16>,
         num_vertices: usize,
         segments: impl Iterator<Item = &'a str>,
         _line: usize,
     ) -> Result<u16, ObjParseError> {
         let mut length = 0;
 
-        let length_index = primitives.len();
-        primitives.push(0); // zero length for now, will be updated at end of primitive parsing
+        let length_index = elements.len();
+        elements.push(0); // zero length for now, will be updated at end of element parsing
 
         for index in segments {
             let index: i64 = index.parse().unwrap();
             let index = match index {
                 // + index instead of - index because it's negative
                 ..0 => (num_vertices as i64 + index) as usize,
-                0 => panic!("indices in a primitive must not be 0"),
+                0 => panic!("indices in a element must not be 0"),
                 1.. => (index as usize) - 1,
             };
-            primitives.push(index as u16);
+            elements.push(index as u16);
             length += 1;
         }
 
-        primitives[length_index] = length;
+        elements[length_index] = length;
 
         Ok(length)
     }
@@ -143,38 +143,38 @@ pub struct Mesh {
     /// a flat array of floats representing 2d vectors describing vertex UVs (texture coordinates)
     pub uvs: Vec<f32>,
     /// a flat array of a length, followed by a series of indices of that length that
-    /// make up a primitive (e.g. lines, triangles, quads, polygons, etc...)
+    /// make up a element (e.g. lines, triangles, quads, polygons, etc...)
     ///
     /// For example: 3 1 2 3 1 4 2 5 6
-    pub primitives: Vec<u16>,
+    pub elements: Vec<u16>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct PrimitiveIter<'a> {
-    primitives: &'a [u16],
+pub struct ElementIter<'a> {
+    elements: &'a [u16],
 }
 
-impl<'a> Iterator for PrimitiveIter<'a> {
+impl<'a> Iterator for ElementIter<'a> {
     type Item = &'a [u16];
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.primitives.is_empty() {
+        if self.elements.is_empty() {
             return None;
         }
 
-        let length = self.primitives[0] as usize;
-        let items = &self.primitives[1..1 + length];
+        let length = self.elements[0] as usize;
+        let items = &self.elements[1..1 + length];
 
-        self.primitives = &self.primitives[1 + length..];
+        self.elements = &self.elements[1 + length..];
 
         Some(items)
     }
 }
 
 impl Mesh {
-    pub fn iter_primitives(&self) -> PrimitiveIter {
-        PrimitiveIter {
-            primitives: &self.primitives,
+    pub fn iter_elements(&self) -> ElementIter {
+        ElementIter {
+            elements: &self.elements,
         }
     }
 }
