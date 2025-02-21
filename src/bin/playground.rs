@@ -1,9 +1,7 @@
-use std::fs;
-
-use objective::{parse_obj, Mesh};
+use objective::{Mesh, Model};
 
 fn main() {
-    let model = parse_obj(fs::read_to_string("assets/box.obj").unwrap().as_str()).unwrap();
+    let model = Model::load_from_file("assets/box.obj").unwrap();
 
     print_mesh(&model.meshes[0]);
 }

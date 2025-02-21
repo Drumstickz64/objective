@@ -98,10 +98,9 @@ fn parse_primitive<'a>(
         let index: i64 = index.parse().unwrap();
         let index = match index {
             // + index instead of - index because it's negative
-            // + 1 because indices are 1 based
-            ..0 => (num_vertices as i64 + index + 1) as usize,
+            ..0 => (num_vertices as i64 + index) as usize,
             0 => panic!("indices in a primitive must not be 0"),
-            1.. => index as usize,
+            1.. => (index as usize) - 1,
         };
         primitives.push(index);
         length += 1;
