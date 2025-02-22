@@ -1,5 +1,5 @@
 use macroquad::prelude::*;
-use objective::Model;
+use objective::{ElementDataType, Model};
 
 #[macroquad::main("Simple Box")]
 async fn main() {
@@ -9,6 +9,10 @@ async fn main() {
 
     let mut macroquad_indices = Vec::new();
     for (i, prim) in mesh.iter_elements().enumerate() {
+        let (prim, ElementDataType::VertexOnly) = prim else {
+            panic!("expected vertex only data for 'box.obj'");
+        };
+
         assert_eq!(
             prim.len(),
             4,

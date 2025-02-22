@@ -1,3 +1,5 @@
+// TODO: get face parsing correct and load capsule successfully
+
 use std::{fs, io, path::Path};
 
 #[derive(Debug, Clone, Default, PartialEq)]
@@ -61,9 +63,11 @@ impl Model {
                     }
                 }
                 "f" => {
-                    let num_indices = Self::parse_element(
+                    let num_indices = Self::parse_face(
+                        &vertices,
+                        &normals,
+                        &uvs,
                         &mut elements,
-                        vertices.len() / 3,
                         segments,
                         line_number,
                     )
@@ -105,32 +109,68 @@ impl Model {
         Ok(count)
     }
 
-    fn parse_element<'a>(
+    fn parse_face<'a>(
+        vertices: &[f32],
+        normals: &[f32],
+        uvs: &[f32],
         elements: &mut Vec<u16>,
-        num_vertices: usize,
         segments: impl Iterator<Item = &'a str>,
         _line: usize,
     ) -> Result<u16, ObjParseError> {
-        let mut length = 0;
+        // TODO
 
-        let length_index = elements.len();
+        let mut length = 0;
+        let mut provided_data = ElementDataType::VertexOnly;
+
+        let start_index = elements.len();
+
+        elements.push(ElementDataType::VertexOnly.into_element_data());
         elements.push(0); // zero length for now, will be updated at end of element parsing
 
-        for index in segments {
-            let index: i64 = index.parse().unwrap();
-            let index = match index {
-                // + index instead of - index because it's negative
-                ..0 => (num_vertices as i64 + index) as usize,
-                0 => panic!("indices in a element must not be 0"),
-                1.. => (index as usize) - 1,
-            };
-            elements.push(index as u16);
+        for indices in segments {
+            let mut index_parts = indices.split('/');
+
+            let vertex_index: i64 = index_parts.next().unwrap().parse().unwrap();
+            let vertex_index = Self::map_index(vertex_index, vertices, 3).unwrap();
+            elements.push(vertex_index);
+
+            if let Some(uv_index) = index_parts.next() {
+                if !uv_index.is_empty() {
+                    provided_data = ElementDataType::All;
+                    let uv_index: i64 = uv_index.parse().unwrap();
+                    let uv_index = Self::map_index(uv_index, uvs, 2).unwrap();
+                    elements.push(uv_index);
+                }
+            }
+
+            if let Some(normal_index) = index_parts.next() {
+                if provided_data != ElementDataType::All {
+                    provided_data = ElementDataType::VertexAndNormal;
+                }
+
+                let normal_index: i64 = normal_index.parse().unwrap();
+                let normal_index = Self::map_index(normal_index, normals, 3).unwrap();
+                elements.push(normal_index);
+            }
+
             length += 1;
         }
 
-        elements[length_index] = length;
+        elements[start_index] = provided_data.into_element_data();
+        elements[start_index + 1] = length;
 
         Ok(length)
+    }
+
+    fn map_index(index: i64, vectors: &[f32], num_components: usize) -> Result<u16, ObjParseError> {
+        // TODO: return error when index out of bounds
+        let num_vectors = vectors.len() / num_components;
+        Ok(match index {
+            // + index instead of - index because it's negative
+            ..0 => (num_vectors as i64 + index) as u16,
+            0 => panic!("indices in a element must not be 0"),
+            1.. => (index as u16) - 1,
+        })
     }
 }
 
@@ -149,25 +189,25 @@ pub struct Mesh {
     pub elements: Vec<u16>,
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct ElementIter<'a> {
-    elements: &'a [u16],
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ElementDataType {
+    VertexOnly,
+    VertexAndNormal,
+    All,
 }
 
-impl<'a> Iterator for ElementIter<'a> {
-    type Item = &'a [u16];
+impl ElementDataType {
+    pub fn into_element_data(self) -> u16 {
+        self as u16
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.elements.is_empty() {
-            return None;
+    pub fn from_element_data(num: u16) -> Self {
+        match num {
+            0 => Self::VertexOnly,
+            1 => Self::VertexAndNormal,
+            2 => Self::All,
+            _ => unreachable!(),
         }
-
-        let length = self.elements[0] as usize;
-        let items = &self.elements[1..1 + length];
-
-        self.elements = &self.elements[1 + length..];
-
-        Some(items)
     }
 }
 
@@ -176,5 +216,34 @@ impl Mesh {
         ElementIter {
             elements: &self.elements,
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ElementIter<'a> {
+    elements: &'a [u16],
+}
+
+impl<'a> Iterator for ElementIter<'a> {
+    type Item = (&'a [u16], ElementDataType);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.elements.is_empty() {
+            return None;
+        }
+
+        let element_data_type = ElementDataType::from_element_data(self.elements[0]);
+        let length = self.elements[1] as usize;
+
+        let length = match element_data_type {
+            ElementDataType::VertexOnly => length,
+            ElementDataType::VertexAndNormal => length * 2,
+            ElementDataType::All => length * 3,
+        };
+
+        let items = &self.elements[2..2 + length];
+        self.elements = &self.elements[2 + length..];
+
+        Some((items, element_data_type))
     }
 }
