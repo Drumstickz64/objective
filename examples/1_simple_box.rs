@@ -1,3 +1,6 @@
+//! A simple example that imports and draw a cube that only contains vertex positions
+//! and faces with vertex indices (see box.obj).
+
 use macroquad::prelude::*;
 use objective::{ElementDataType, Model};
 
